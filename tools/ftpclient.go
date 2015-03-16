@@ -56,7 +56,7 @@ func (client *FtpClient) ChangeWorkDir(dirname string) error {
 	}
 
 	currentDir, _ := client.serverConn.CurrentDir()
-	log.Println(currentDir)
+	log.Printf("进入目录 %s\n", currentDir)
 
 	return nil
 }
