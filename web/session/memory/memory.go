@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var pder = &Provider{list.New()}
+var pder = &Provider{list: list.New()}
 
 type SessionStore struct {
 	sid          string

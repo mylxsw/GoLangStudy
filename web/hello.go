@@ -53,7 +53,7 @@ func login(w http.ResponseWriter, req *http.Request) {
 	} else {
 		token := req.Form.Get("token")
 		fmt.Println("token:", token)
-		saved_token = session.Get("token")
+		saved_token := session.Get("token")
 		if saved_token == token {
 			fmt.Println("TOKEN VALID")
 		} else {
