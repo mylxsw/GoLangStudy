@@ -1,6 +1,8 @@
 package main
 
 import (
+	"aicode.cc/web/session"
+	_ "aicode.cc/web/session/memory"
 	"crypto/md5"
 	"fmt"
 	"html/template"
@@ -11,6 +13,13 @@ import (
 	"strings"
 	"time"
 )
+
+var globalSessions *session.Manager
+
+func init() {
+	globalSessions, _ = session.NewManager("memory", "gosessionid", 3600)
+	go globalSessions.GC()
+}
 
 func sayHelloName(w http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
@@ -29,17 +38,27 @@ func sayHelloName(w http.ResponseWriter, req *http.Request) {
 func login(w http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	fmt.Println("method:", req.Method)
+
+	session := globalSessions.SessionStart(w, req)
+
 	if req.Method == "GET" {
 		currentime := time.Now().Unix()
 		h := md5.New()
 		io.WriteString(h, strconv.FormatInt(currentime, 10))
 		token := fmt.Sprintf("%x", h.Sum(nil))
+		session.Set("token", token)
 
 		t, _ := template.ParseFiles("views/login.gtpl")
 		t.Execute(w, token)
 	} else {
 		token := req.Form.Get("token")
 		fmt.Println("token:", token)
+		saved_token = session.Get("token")
+		if saved_token == token {
+			fmt.Println("TOKEN VALID")
+		} else {
+			fmt.Println("TOKEN INVALID")
+		}
 
 		fmt.Println("username:", req.Form["username"])
 		fmt.Println("password:", req.Form["password"])

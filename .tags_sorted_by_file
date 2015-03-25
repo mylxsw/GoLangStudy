@@ -1,0 +1,146 @@
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_PROGRAM_VERSION	5.8	//
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+Sum	test_array.go	/^func Sum(a *[3]float64) (sum float64) {$/;"	d
+main	test_array.go	/^func main() {$/;"	d
+main	test_buffered_channel.go	/^func main() {$/;"	d
+Count	test_channel2.go	/^func Count(ch chan int) {$/;"	d
+main	test_channel2.go	/^func main() {$/;"	d
+main	test_channels.go	/^func main() {$/;"	d
+sum	test_channels.go	/^func sum(a []int, c chan int) {$/;"	d
+main	test_date.go	/^func main() {$/;"	d
+Error	test_errors.go	/^func (e *MyError) Error() string {$/;"	d
+MyError	test_errors.go	/^type MyError struct {$/;"	d
+main	test_errors.go	/^func main() {$/;"	d
+run	test_errors.go	/^func run() error {$/;"	d
+bak_filename	test_file.go	/^	var bak_filename string$/;"	d
+main	test_file.go	/^func main() {$/;"	d
+Usage	test_flag.go	/^var Usage = func() {$/;"	d
+ip	test_flag.go	/^	var ip = flag.Int("flagname", 1234, "help message")$/;"	d
+main	test_flag.go	/^func main() {$/;"	d
+_addr	test_ftp.go	/^var _addr = flag.String("h", "", "FTP 主机地址:端口号")$/;"	d
+_password	test_ftp.go	/^var _password = flag.String("p", "", "账户密码，默认为空")$/;"	d
+_username	test_ftp.go	/^var _username = flag.String("u", "anonymous", "登录账户，默认为anonymous")$/;"	d
+main	test_ftp.go	/^func main() {$/;"	d
+uploaded_size	test_ftp.go	/^	var uploaded_size int64 = 0$/;"	d
+usage	test_ftp.go	/^var usage = `Usage: test_ftp [options] search_path`$/;"	d
+usageAndExit	test_ftp.go	/^func usageAndExit(message string) {$/;"	d
+ReqOpts	test_goab.go	/^type ReqOpts struct {$/;"	d
+Request	test_goab.go	/^func (r *ReqOpts) Request() *http.Request {$/;"	d
+main	test_goab.go	/^func main() {$/;"	d
+result	test_goab.go	/^type result struct {$/;"	d
+usage	test_goab.go	/^var usage = `Usage: goab [options...] <url>$/;"	d
+usageAndExit	test_goab.go	/^func usageAndExit(message string) {$/;"	d
+wg	test_goab.go	/^	var wg sync.WaitGroup$/;"	d
+worker	test_goab.go	/^func worker(results chan *result, wg *sync.WaitGroup, ch chan *http.Request) {$/;"	d
+main	test_goroutines.go	/^func main() {$/;"	d
+say	test_goroutines.go	/^func say(s string) {$/;"	d
+main	test_goroutines2.go	/^func main() {$/;"	d
+clientStub	test_hprose_client_alias.go	/^type clientStub struct {$/;"	d
+main	test_hprose_client_alias.go	/^func main() {$/;"	d
+ro	test_hprose_client_alias.go	/^	var ro *clientStub$/;"	d
+clientStub	test_hprose_client_async.go	/^type clientStub struct {$/;"	d
+main	test_hprose_client_async.go	/^func main() {$/;"	d
+ro	test_hprose_client_async.go	/^	var ro *clientStub$/;"	d
+clientStub	test_hprose_client_excp.go	/^type clientStub struct {$/;"	d
+main	test_hprose_client_excp.go	/^func main() {$/;"	d
+ro	test_hprose_client_excp.go	/^	var ro *clientStub$/;"	d
+main	test_hprose_client_proxy.go	/^func main() {$/;"	d
+proxyStub	test_hprose_client_proxy.go	/^type proxyStub struct {$/;"	d
+ro	test_hprose_client_proxy.go	/^	var ro *proxyStub$/;"	d
+ClientStub	test_hprose_client_sync.go	/^type ClientStub struct {$/;"	d
+main	test_hprose_client_sync.go	/^func main() {$/;"	d
+ro	test_hprose_client_sync.go	/^	var ro *ClientStub$/;"	d
+MyService	test_hprose_server.go	/^type MyService struct{}$/;"	d
+Sum	test_hprose_server.go	/^func (myService MyService) Sum(args ...int) (int, error) {$/;"	d
+Swap	test_hprose_server.go	/^func (myService MyService) Swap(a, b int) (int, int) {$/;"	d
+hello	test_hprose_server.go	/^func hello(name string) string {$/;"	d
+main	test_hprose_server.go	/^func main() {$/;"	d
+FetchLibaos	test_http.go	/^func FetchLibaos(page int) (libaos []Libao) {$/;"	d
+Libao	test_http.go	/^type Libao struct {$/;"	d
+WriteHtml	test_http.go	/^func WriteHtml(filename string, libaos []Libao) {$/;"	d
+main	test_http.go	/^func main() {$/;"	d
+main	test_http_servemux.go	/^func main() {$/;"	d
+Person	test_interface.go	/^type Person interface {$/;"	d
+Programmer	test_interface.go	/^type Programmer struct {$/;"	d
+eat	test_interface.go	/^func (person *Programmer) eat(food string) {$/;"	d
+main	test_interface.go	/^func main() {$/;"	d
+person	test_interface.go	/^	var person Person$/;"	d
+speak	test_interface.go	/^func (person *Programmer) speak(words string) {$/;"	d
+ReadWriter	test_interface2.go	/^type ReadWriter interface {$/;"	d
+Reader	test_interface2.go	/^type Reader interface {$/;"	d
+Writer	test_interface2.go	/^type Writer interface {$/;"	d
+main	test_interface2.go	/^func main() {$/;"	d
+main	test_map.go	/^func main() {$/;"	d
+main	test_os.go	/^func main() {$/;"	d
+main	test_path.go	/^func main() {$/;"	d
+main	test_rand.go	/^func main() {$/;"	d
+main	test_rand_2.go	/^func main() {$/;"	d
+status	test_rand_2.go	/^	var status chan bool = make(chan bool)$/;"	d
+fibonacci	test_range_close.go	/^func fibonacci(n int, c chan int) {$/;"	d
+main	test_range_close.go	/^func main() {$/;"	d
+main	test_reader.go	/^func main() {$/;"	d
+CallUserFunc	test_reflect.go	/^func CallUserFunc(function interface{}) {$/;"	d
+SetAge	test_reflect.go	/^func (this *TestObject) SetAge(age int) {$/;"	d
+TestObject	test_reflect.go	/^type TestObject struct {$/;"	d
+interMethod	test_reflect.go	/^func (this *TestObject) interMethod() {$/;"	d
+main	test_reflect.go	/^func main() {$/;"	d
+test_func	test_reflect.go	/^	var test_func = func() {$/;"	d
+main	test_runtime.go	/^func main() {$/;"	d
+fibonacci	test_select.go	/^func fibonacci(c, quit chan int) {$/;"	d
+main	test_select.go	/^func main() {$/;"	d
+main	test_select2.go	/^func main() {$/;"	d
+Person	test_stringer.go	/^type Person struct {$/;"	d
+String	test_stringer.go	/^func (p Person) String() string {$/;"	d
+main	test_stringer.go	/^func main() {$/;"	d
+IPAddr	test_stringer_ip.go	/^type IPAddr [4]byte$/;"	d
+String	test_stringer_ip.go	/^func (ip IPAddr) String() string {$/;"	d
+main	test_stringer_ip.go	/^func main() {$/;"	d
+main	test_sync_once.go	/^func main() {$/;"	d
+once	test_sync_once.go	/^	var once sync.Once$/;"	d
+main	test_sync_waitgroup.go	/^func main() {$/;"	d
+urls	test_sync_waitgroup.go	/^	var urls = []string{$/;"	d
+wg	test_sync_waitgroup.go	/^	var wg sync.WaitGroup$/;"	d
+main	test_tango/test_1.go	/^func main() {$/;"	d
+Action	test_tango/test_2.go	/^type Action struct {$/;"	d
+Get	test_tango/test_2.go	/^func (Action) Get() map[string]string {$/;"	d
+main	test_tango/test_2.go	/^func main() {$/;"	d
+Count	test_thread.go	/^func Count(lock *sync.Mutex) {$/;"	d
+counter	test_thread.go	/^var counter int = 0$/;"	d
+main	test_thread.go	/^func main() {$/;"	d
+hello	test_webgo.go	/^func hello(val string) string {$/;"	d
+main	test_webgo.go	/^func main() {$/;"	d
+Hello	test_webservers.go	/^type Hello struct{}$/;"	d
+ServeHTTP	test_webservers.go	/^func (h Hello) ServeHTTP(w http.ResponseWriter, r *http.Request) {$/;"	d
+ServeHTTP	test_webservers.go	/^func (h String) ServeHTTP(w http.ResponseWriter, r *http.Request) {$/;"	d
+String	test_webservers.go	/^type String string$/;"	d
+main	test_webservers.go	/^func main() {$/;"	d
+ChangeWorkDir	tools/ftpclient.go	/^func (client *FtpClient) ChangeWorkDir(dirname string) error {$/;"	d
+FtpClient	tools/ftpclient.go	/^type FtpClient struct {$/;"	d
+Mkdir	tools/ftpclient.go	/^func (client *FtpClient) Mkdir(dirname string) error {$/;"	d
+NewFtpClient	tools/ftpclient.go	/^func NewFtpClient(addr, username, password string) (*FtpClient, error) {$/;"	d
+UploadFile	tools/ftpclient.go	/^func (client *FtpClient) UploadFile(filename string) error {$/;"	d
+login	web/hello.go	/^func login(w http.ResponseWriter, req *http.Request) {$/;"	d
+main	web/hello.go	/^func main() {$/;"	d
+sayHelloName	web/hello.go	/^func sayHelloName(w http.ResponseWriter, req *http.Request) {$/;"	d
+Get	web/memory/memory.go	/^func (st *SessionStore) Get(key interface{}) interface{} {$/;"	d
+SessionStore	web/memory/memory.go	/^type SessionStore struct {$/;"	d
+Set	web/memory/memory.go	/^func (st *SessionStore) Set(key, value interface{}) error {$/;"	d
+pder	web/memory/memory.go	/^var pder = &session.Provider{list.New()}$/;"	d
+MyMux	web/mymux.go	/^type MyMux struct{}$/;"	d
+ServeHTTP	web/mymux.go	/^func (p *MyMux) ServeHTTP(w http.ResponseWriter, req *http.Request) {$/;"	d
+main	web/mymux.go	/^func main() {$/;"	d
+sayHelloName	web/mymux.go	/^func sayHelloName(w http.ResponseWriter, req *http.Request) {$/;"	d
+GC	web/session/session.go	/^func (manager *Manager) GC() {$/;"	d
+Manager	web/session/session.go	/^type Manager struct {$/;"	d
+NewManager	web/session/session.go	/^func NewManager(provideName, cookieName string, maxlifetime int64) (*Manager, error) {$/;"	d
+Provider	web/session/session.go	/^type Provider interface {$/;"	d
+Register	web/session/session.go	/^func Register(name string, provider Provider) {$/;"	d
+Session	web/session/session.go	/^type Session interface {$/;"	d
+SessionDestroy	web/session/session.go	/^func (manager *Manager) SessionDestroy(w http.ResponseWriter, r *http.Request) {$/;"	d
+SessionStart	web/session/session.go	/^func (manager *Manager) SessionStart(w http.ResponseWriter, r *http.Request) (session Session) {$/;"	d
+provides	web/session/session.go	/^var provides = make(map[string]Provider)$/;"	d
+sessionId	web/session/session.go	/^func (manager *Manager) sessionId() string {$/;"	d
