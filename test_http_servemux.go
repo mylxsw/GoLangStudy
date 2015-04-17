@@ -22,7 +22,7 @@ func main() {
 		log.Printf("Request Ok: %s", req.URL.Path)
 	})
 
-	log.Printf(" Server 启动中，监听8000 端口")
-	http.ListenAndServe(":8000", mux)
+	log.Printf(" Server 启动中，监听8080 端口")
+	http.ListenAndServe(":8080", mux)
 
 }
