@@ -1,5 +1,6 @@
 package algorithm
 
+// 快速排序
 func QuickSort(s *[]int, left, right int) {
 	if left < right {
 		i := left
