@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hello world!</title>
+    <!-- zui -->
+    <link href="/zui/css/zui.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="container">
+      
+<section >
+    <article>
+      <div class="example">
+        <br>
+        <ul class="breadcrumb">
+          <li><i class="icon-location-arrow icon-muted"></i></li>
+          <li><a href="#">Home</a></li>
+          <li><a href="#">Library</a></li>
+          <li class="active">Data</li>
+        </ul>
+        <article class="article">
+          <header>
+            <h1 class="text-center">{{.Title}}</h1>
+            <dl class="dl-inline">
+              <dt>发布时间：</dt>
+              <dd>{{.PublishTime}}</dd>
+              <dt>作者：</dt>
+              <dd>{{.Author}}</dd>
+              <dt></dt>
+              <dd class="pull-right"><span class="label label-success">NEW</span> <span class="label label-warning">火爆</span> <span class="label label-info">原创</span> <span class="label label-danger"><i class="icon-eye-open"></i> 235</span></dd>
+            </dl>
+            <section class="abstract">
+              <p><strong>摘要：</strong>{{.Intro}}</p>
+            </section>
+          </header>
+          <section class="article-content">
+            {{.Content}}
+          </section>
+          <footer>
+            <p class="pull-right text-muted">
+              发布时间：{{.PublishTime}} &nbsp;点击数：{{.ClickTimes}}
+            </p>
+            <p class="text-important">本文版权所有归<a href="###">@{{.Author}}</a></p>
+            <ul class="pager pager-justify">
+              <li class="previous"><a href="#"><i class="icon-arrow-left"></i> 返回</a></li>
+              <li><a href="#"><i class="icon-list-ul"></i> 目录</a></li>
+              <li class="next disabled"><a href="#">没有下一篇 <i class="icon-arrow-right"></i></a></li>
+            </ul>
+          </footer>
+        </article>
+      </div>
+    </article>
+  </section>
+
+
+    </div>
+  
+  <!-- jQuery (ZUI中的Javascript组件依赖于jQuery) -->
+  <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+  <!-- ZUI Javascript组件 -->
+  <script src="/zui/js/zui.min.js"></script>
+</body>
+</html>

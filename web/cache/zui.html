@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hello world!</title>
+    <!-- zui -->
+    <link href="zui/css/zui.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="container">
+      
+<section >
+    <article>
+      <div class="example">
+        <br>
+        <ul class="breadcrumb">
+          <li><i class="icon-location-arrow icon-muted"></i></li>
+          <li><a href="#">Home</a></li>
+          <li><a href="#">Library</a></li>
+          <li class="active">Data</li>
+        </ul>
+        <article class="article">
+          <header>
+            <h1 class="text-center">测试文章</h1>
+            <dl class="dl-inline">
+              <dt>发布时间：</dt>
+              <dd>2015-05-27</dd>
+              <dt>作者：</dt>
+              <dd>管宜尧</dd>
+              <dt></dt>
+              <dd class="pull-right"><span class="label label-success">NEW</span> <span class="label label-warning">火爆</span> <span class="label label-info">原创</span> <span class="label label-danger"><i class="icon-eye-open"></i> 235</span></dd>
+            </dl>
+            <section class="abstract">
+              <p><strong>摘要：</strong>文章简介</p>
+            </section>
+          </header>
+          <section class="article-content">
+            <nav>
+<ul>
+<li>
+<ul>
+<li><a href="#toc_0">Ansible</a>
+<ul>
+<li><a href="#toc_1">Ad-Hoc 命令</a>
+<ul>
+<li><a href="#toc_2">目录复制</a></li>
+<li><a href="#toc_3">包管理</a></li>
+<li><a href="#toc_4">执行shell命令</a></li>
+<li><a href="#toc_5">添加用户</a></li>
+<li><a href="#toc_6">服务监控</a></li>
+<li><a href="#toc_7">自动部署GIT</a></li>
+<li><a href="#toc_8">自动部署SVN</a></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+
+<h2 id="toc_0">Ansible</h2>
+
+<p>[TOC]</p>
+
+<h3 id="toc_1">Ad-Hoc 命令</h3>
+
+<p>初始化<code>ansible</code>环境</p>
+
+<pre><code>$ cd &lt;PATH_TO_ANSIBLE&gt;
+$ ./hacking/env-setup
+</code></pre>
+
+<p>创建<code>&lt;PATH_TO_ANSIBLE&gt;/ansible_hosts</code> 文件：</p>
+
+<pre><code>[vagrant]
+10.100.100.10    ansible_connection=ssh ansible_ssh_user=vagrant
+10.100.100.11    ansible_connection=ssh ansible_ssh_user=vagrant
+</code></pre>
+
+<p>创建该文件后</p>
+
+<pre><code>export ANSIBLE_HOSTS=&lt;PATH_TO_ANSIBLE&gt;/ansible_hosts
+</code></pre>
+
+<h4 id="toc_2">目录复制</h4>
+
+<pre><code>$ ansible vagrant -m copy -a &quot;src=/Users/mylxsw/codes/php/aicode/OAuth2.0 dest=/home/vagrant/www&quot; --ask-pass
+SSH password:
+10.100.100.10 | success &gt;&gt; {
+    &quot;changed&quot;: true,
+    &quot;dest&quot;: &quot;/home/vagrant/www/&quot;,
+    &quot;src&quot;: &quot;/Users/mylxsw/codes/php/aicode/OAuth2.0&quot;
+}
+
+10.100.100.11 | success &gt;&gt; {
+    &quot;changed&quot;: true,
+    &quot;dest&quot;: &quot;/home/vagrant/www/&quot;,
+    &quot;src&quot;: &quot;/Users/mylxsw/codes/php/aicode/OAuth2.0&quot;
+}
+</code></pre>
+
+<h4 id="toc_3">包管理</h4>
+
+<pre><code>$ ansible vagrant -m yum -a &quot;name=git&quot; --ask-pass --become --become-user root --ask-become-pass
+SSH password:
+SUDO password[defaults to SSH password]:
+</code></pre>
+
+<h4 id="toc_4">执行shell命令</h4>
+
+<pre><code>$ ansible vagrant -m shell -a &quot;sudo yum install tree -y&quot; --become-user root --ask-become-pass --ask-pass
+SSH password:
+SUDO password[defaults to SSH password]:
+</code></pre>
+
+<h4 id="toc_5">添加用户</h4>
+
+<p>先安装Python的<code>passlib</code>库</p>
+
+<pre><code>sudo pip install passlib
+</code></pre>
+
+<p>创建用户密码，这里的使用密码<code>guanyy</code>:</p>
+
+<pre><code>python -c &quot;from passlib.hash import sha512_crypt; import getpass; print sha512_crypt.encrypt(getpass.getpass())&quot;
+</code></pre>
+
+<p>执行上述命令后，会提示输入密码。</p>
+
+<p>使用<code>user</code>模块创建用户账户</p>
+
+<pre><code>$ ansible vagrant -m user -a 'name=guanyy password=$6$rounds=100000$oPe4IWi77dLcd1O.$Os0fTsptEK8WHmnLUIyR/Nm2UlLtwFch6tQrYdiwKXC3XndUuJxSv9rPbkUAtI2Y5pQqW93A638JZIHZ6AnMv/' --ask-pass --become-user root --ask-become-pass --become
+SSH password:
+SUDO password[defaults to SSH password]:
+</code></pre>
+
+<h4 id="toc_6">服务监控</h4>
+
+<pre><code>$ ansible vagrant -m service -a &quot;name=monit state=started&quot; --ask-pass --become --become-user root --ask-become-pass
+SSH password:
+SUDO password[defaults to SSH password]:
+10.100.100.11 | success &gt;&gt; {
+    &quot;changed&quot;: true,
+    &quot;name&quot;: &quot;monit&quot;,
+    &quot;state&quot;: &quot;started&quot;
+}
+
+10.100.100.10 | success &gt;&gt; {
+    &quot;changed&quot;: true,
+    &quot;name&quot;: &quot;monit&quot;,
+    &quot;state&quot;: &quot;started&quot;
+}
+</code></pre>
+
+<h4 id="toc_7">自动部署GIT</h4>
+
+<pre><code>$ ansible vagrant -m git -a &quot;repo=https://git.coding.net/mylxsw/Arsenals.git dest=/home/vagrant/www/arsenals version=HEAD&quot; --ask-pass
+SSH password:
+10.100.100.10 | success &gt;&gt; {
+    &quot;after&quot;: &quot;2d97221133d0e52564a14f9d79fcaf1e49046796&quot;,
+    &quot;before&quot;: null,
+    &quot;changed&quot;: true
+}
+
+10.100.100.11 | success &gt;&gt; {
+    &quot;after&quot;: &quot;2d97221133d0e52564a14f9d79fcaf1e49046796&quot;,
+    &quot;before&quot;: null,
+    &quot;changed&quot;: true
+}
+</code></pre>
+
+<h4 id="toc_8">自动部署SVN</h4>
+
+<pre><code>$ ansible vagrant -m subversion -a 'repo=&lt;YOUR SVN REPO&gt; dest=/home/vagrant/www export=true username=&lt;YOUR USERNAME&gt; password=&lt;YOUR PASSWORD&gt; force=yes' --ask-pass
+</code></pre>
+
+<p>如果server没有安装svn，需要先安装</p>
+
+<pre><code>$ ansible vagrant -m yum -a 'name=svn' --ask-pass --become --become-user root --ask-become-pass
+</code></pre>
+
+          </section>
+          <footer>
+            <p class="pull-right text-muted">
+              发布时间：2015-05-27 &nbsp;点击数：1003
+            </p>
+            <p class="text-important">本文版权所有归<a href="###">@管宜尧</a></p>
+            <ul class="pager pager-justify">
+              <li class="previous"><a href="#"><i class="icon-arrow-left"></i> 返回</a></li>
+              <li><a href="#"><i class="icon-list-ul"></i> 目录</a></li>
+              <li class="next disabled"><a href="#">没有下一篇 <i class="icon-arrow-right"></i></a></li>
+            </ul>
+          </footer>
+        </article>
+      </div>
+    </article>
+  </section>
+
+
+    </div>
+  
+  <!-- jQuery (ZUI中的Javascript组件依赖于jQuery) -->
+  <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+  <!-- ZUI Javascript组件 -->
+  <script src="zui/js/zui.min.js"></script>
+</body>
+</html>
