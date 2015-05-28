@@ -30,7 +30,11 @@
               <dt>作者：</dt>
               <dd>{{.Author}}</dd>
               <dt></dt>
-              <dd class="pull-right"><span class="label label-success">NEW</span> <span class="label label-warning">火爆</span> <span class="label label-info">原创</span> <span class="label label-danger"><i class="icon-eye-open"></i> 235</span></dd>
+              <dd class="pull-right">
+                {{range $index, $tag := .Tags}}
+                <span class="label label-success">{{$tag}}</span> 
+                {{end}}
+                </dd>
             </dl>
             <section class="abstract">
               <p><strong>摘要：</strong>{{.Intro}}</p>
