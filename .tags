@@ -144,3 +144,9 @@ usageAndExit	test_goab.go	/^func usageAndExit(message string) {$/;"	d
 wg	test_goab.go	/^	var wg sync.WaitGroup$/;"	d
 wg	test_sync_waitgroup.go	/^	var wg sync.WaitGroup$/;"	d
 worker	test_goab.go	/^func worker(results chan *result, wg *sync.WaitGroup, ch chan *http.Request) {$/;"	d
+kqUser	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^type kqUser struct {$/;"	type	line:10
+kqUser	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^type kqUser struct {$/;"	type	line:10
+main	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^func main() {$/;"	func	line:25
+main	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^func main() {$/;"	func	line:25
+cardChecked	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^func cardChecked(username string, kqTime time.Time) (kqDate string, checkType uint) {$/;"	func	line:76
+cardChecked	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^func cardChecked(username string, kqTime time.Time) (kqDate string, checkType uint) {$/;"	func	line:76
