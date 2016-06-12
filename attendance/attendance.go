@@ -83,13 +83,70 @@ func main() {
 		for kqDate, checkTypes := range user.KqInEveryDays {
 			log.Printf("用户 %s 于 %s 考勤 %d 次", username, kqDate, len(checkTypes))
 
+			kqOk := true
+
 			// TODO 考勤检查
 			if user.Depart == "客户服务部" {
-				
+
+				if !inArray(checkTypeMorningWork, checkTypes) {
+					kqOk = false
+					log.Printf("用户 %s 于 %s 早上缺勤", username, kqDate)
+				}
+
+				if !inArray(checkTypeAfternoonOffWork, checkTypes) {
+					kqOk = false
+					log.Printf("用户 %s 于 %s 下午下班缺勤", username, kqDate)
+				}
+
+			} else if user.Depart == "秩序维护部" {
+
+			} else if user.Depart == "综合管理部" {
+
+			} else if user.Depart == "维修部" {
+
+				if !inArray(checkTypeMorningWork, checkTypes) {
+					kqOk = false
+					log.Printf("用户 %s 于 %s 早上缺勤", username, kqDate)
+				}
+
+				if !inArray(checkTypeMorningOffWork, checkTypes) {
+					kqOk = false
+					log.Printf("用户 %s 于 %s 上午下班未打卡", username, kqDate)
+				}
+
+				if !inArray(checkTypeAfternoonWork, checkTypes) {
+					kqOk = false
+					log.Printf("用户 %s 于 %s 下午上班未打卡", username, kqDate)
+				}
+
+				if !inArray(checkTypeAfternoonOffWork, checkTypes) {
+					kqOk = false
+					log.Printf("用户 %s 于 %s 下午下班未打卡", username, kqDate)
+				}
+
+			} else if user.Depart == "亳州恒大城物业服务中心" {
+
+			} else {
+				log.Printf("用户 %s 所属部门 %s 不再考勤范围内", user.Username, user.Depart)
+				continue
+			}
+
+			if kqOk {
+				log.Printf("用户 %s 与 %s 考勤完整", username, kqDate)
 			}
 		}
 	}
 
+}
+
+func inArray(needle uint, haystack []uint) bool {
+	for _, item := range haystack {
+		if item == needle {
+			return true
+		}
+	}
+
+	return false
 }
 
 // 检查用户打卡时间是否为合法的考勤
