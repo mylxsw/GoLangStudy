@@ -150,3 +150,7 @@ main	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^func ma
 main	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^func main() {$/;"	func	line:25
 cardChecked	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^func cardChecked(username string, kqTime time.Time) (kqDate string, checkType uint) {$/;"	func	line:76
 cardChecked	/Users/mylxsw/codes/golang/src/aicode.cc/attendance/attendance.go	/^func cardChecked(username string, kqTime time.Time) (kqDate string, checkType uint) {$/;"	func	line:76
+main	/Users/mylxsw/codes/golang/src/aicode.cc/test_redis.go	/^func main() {$/;"	func	line:10
+main	/Users/mylxsw/codes/golang/src/aicode.cc/test_redis.go	/^func main() {$/;"	func	line:10
+name	/Users/mylxsw/codes/golang/src/aicode.cc/test_redis.go	/^        var name, password string$/;"	var	line:28
+name	/Users/mylxsw/codes/golang/src/aicode.cc/test_redis.go	/^        var name, password string$/;"	var	line:28
