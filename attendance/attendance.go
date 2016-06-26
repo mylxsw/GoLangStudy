@@ -5,7 +5,20 @@ import (
 	"log"
 	"strings"
 	"time"
+	"flag"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
 )
+
+// 重构思路
+// 1. 遍历所有用户，找出所涉及到所有的日期，创建标题单元格
+// 2. 遍历记录，获取每个用户每天的打卡记录
+// 3. 遍历用户，遍历每天的打卡，根据涉及的日期，填写到相关的单元格
+
+var sourceFile = flag.String("source", getCurrentDir() + "/kaoqin.xlsx", "考勤记录文件")
+var destFile = flag.String("dest", time.Now().Format("2006-01-02-15-04-05.xlsx"), "目标文件")
 
 type kqUser struct {
 	Depart        string
@@ -24,13 +37,15 @@ const (
 )
 
 func main() {
-	excelFileName := "/Users/mylxsw/Downloads/222.xlsx"
-	xlFile, err := xlsx.OpenFile(excelFileName)
+	flag.Parse()
+
+	xlFile, err := xlsx.OpenFile(*sourceFile)
 	if err != nil {
 		log.Fatalf("文件打开失败: %s", err)
 	}
 
 	users := make(map[string]kqUser)
+	// 第一次遍历，读取excel中的考勤记录，以用户为单位切分
 	for _, sheet := range xlFile.Sheets {
 		for index, row := range sheet.Rows {
 			if index == 0 {
@@ -59,6 +74,7 @@ func main() {
 
 	log.Printf("本次考勤用户共 %d 人", len(users))
 
+	// 遍历用户，计算用户考勤
 	for username, user := range users {
 		log.Printf("用户 %s 本月共 %d 次考勤", username, len(user.KqTimes))
 
@@ -79,11 +95,40 @@ func main() {
 		users[username] = user
 	}
 
+	// 遍历用户，统计考勤结果
+	destExcelFile := xlsx.NewFile()
+	sheet, err := destExcelFile.AddSheet("Sheet1")
+	if err != nil {
+		log.Fatalf("创建Excel文件失败: %s", err)
+	}
+
+	// 标题
+	row := sheet.AddRow()
+	row.AddCell().Value = "编号"
+	row.AddCell().Value = "姓名"
+
+	for day  := 0; day < 31; day ++ {
+		row.AddCell().Value = strconv.Itoa(day + 1)
+	}
+
 	for username, user := range users {
+		row := sheet.AddRow()
+
+		cell := row.AddCell()
+		cell.Value = user.Number
+
+		cell2 :=row.AddCell()
+		cell2.Value = username
+
+		for day := 0; day < 31; day ++ {
+			row.AddCell()
+		}
+
 		for kqDate, checkTypes := range user.KqInEveryDays {
 			log.Printf("用户 %s 于 %s 考勤 %d 次", username, kqDate, len(checkTypes))
-
 			kqOk := true
+
+			var kqStatus []string
 
 			// TODO 考勤检查
 			if user.Depart == "客户服务部" {
@@ -91,11 +136,13 @@ func main() {
 				if !inArray(checkTypeMorningWork, checkTypes) {
 					kqOk = false
 					log.Printf("用户 %s 于 %s 早上缺勤", username, kqDate)
+					kqStatus = append(kqStatus, "早上缺勤")
 				}
 
 				if !inArray(checkTypeAfternoonOffWork, checkTypes) {
 					kqOk = false
 					log.Printf("用户 %s 于 %s 下午下班缺勤", username, kqDate)
+					kqStatus = append(kqStatus, "下午下班缺勤")
 				}
 
 			} else if user.Depart == "秩序维护部" {
@@ -107,21 +154,25 @@ func main() {
 				if !inArray(checkTypeMorningWork, checkTypes) {
 					kqOk = false
 					log.Printf("用户 %s 于 %s 早上缺勤", username, kqDate)
+					kqStatus = append(kqStatus, "早上缺勤")
 				}
 
 				if !inArray(checkTypeMorningOffWork, checkTypes) {
 					kqOk = false
 					log.Printf("用户 %s 于 %s 上午下班未打卡", username, kqDate)
+					kqStatus = append(kqStatus, "上午下班未打卡")
 				}
 
 				if !inArray(checkTypeAfternoonWork, checkTypes) {
 					kqOk = false
 					log.Printf("用户 %s 于 %s 下午上班未打卡", username, kqDate)
+					kqStatus = append(kqStatus, "下午上班未打卡")
 				}
 
 				if !inArray(checkTypeAfternoonOffWork, checkTypes) {
 					kqOk = false
 					log.Printf("用户 %s 于 %s 下午下班未打卡", username, kqDate)
+					kqStatus = append(kqStatus, "下午下班未打卡")
 				}
 
 			} else if user.Depart == "亳州恒大城物业服务中心" {
@@ -131,10 +182,20 @@ func main() {
 				continue
 			}
 
+			currentDate, _ := time.Parse("2006-01-02", kqDate)
 			if kqOk {
 				log.Printf("用户 %s 与 %s 考勤完整", username, kqDate)
+				row.Cells[currentDate.Day() + 1].Value = "正常"
+			} else {
+				row.Cells[currentDate.Day() + 1].Value = strings.Join(kqStatus, ",")
 			}
+
 		}
+	}
+
+	err = destExcelFile.Save(*destFile)
+	if err != nil {
+		log.Fatalf("保存Excel失败: %s", err)
 	}
 
 }
@@ -206,4 +267,11 @@ func transformKqForHuman(checkType uint) string {
 	}
 
 	return kqExpress
+}
+
+func getCurrentDir() string {
+	file, _ := exec.LookPath(os.Args[0])
+	path := filepath.Dir(file)
+
+	return path
 }
