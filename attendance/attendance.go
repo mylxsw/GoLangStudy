@@ -1,15 +1,18 @@
 package main
 
 import (
+	"database/sql"
+	"flag"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/tealeg/xlsx"
 	"log"
-	"strings"
-	"time"
-	"flag"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
+    "fmt"
 )
 
 // 重构思路
@@ -17,7 +20,7 @@ import (
 // 2. 遍历记录，获取每个用户每天的打卡记录
 // 3. 遍历用户，遍历每天的打卡，根据涉及的日期，填写到相关的单元格
 
-var sourceFile = flag.String("source", getCurrentDir() + "/kaoqin.xlsx", "考勤记录文件")
+var sourceFile = flag.String("source", getCurrentDir()+"/kaoqin.xlsx", "考勤记录文件")
 var destFile = flag.String("dest", time.Now().Format("2006-01-02-15-04-05.xlsx"), "目标文件")
 
 type kqUser struct {
@@ -39,13 +42,158 @@ const (
 func main() {
 	flag.Parse()
 
-	xlFile, err := xlsx.OpenFile(*sourceFile)
+    fmt.Println("Start")
+
+	db, err := sql.Open("sqlite3", "./sqlite")
 	if err != nil {
-		log.Fatalf("文件打开失败: %s", err)
+		log.Fatalf("连接数据库失败: %s", err)
+		os.Exit(2)
+	}
+	defer db.Close()
+
+	// 初始化records表
+	initRecordTable(db)
+	// 将Excel中的内容导入到数据库
+	excelToDatabase(*sourceFile, db)
+
+	// 获取Excel中日期的边界
+	minDate, maxDate := getDateBorder(db)
+
+    destExcelFile := xlsx.NewFile()
+	sheet, err := destExcelFile.AddSheet("Sheet1")
+	if err != nil {
+		panic(err)
 	}
 
-	users := make(map[string]kqUser)
-	// 第一次遍历，读取excel中的考勤记录，以用户为单位切分
+	// 标题
+	row := sheet.AddRow()
+	row.AddCell().Value = "编号"
+	row.AddCell().Value = "姓名"
+
+    for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
+        row.AddCell().Value = currentDate.Format("1月2日")
+    }
+
+    // 查询用户编号列表
+    numbers, err := db.Query("select distinct number from records")
+    if err != nil {
+        panic(err)
+    }
+    defer numbers.Close()
+
+    stmt, err := db.Prepare("select id, pick_time from records where pick_time > ? and pick_time < ? and number = ?")
+    if err != nil {
+        panic(err)
+    }
+    defer stmt.Close()
+
+    // 遍历用户编号，处理每个用户的打卡记录
+    var pickCountInDay int
+    var records *sql.Rows
+    for numbers.Next() {
+        var userNumber string
+        var id int
+        var username, depart string
+        numbers.Scan(&userNumber)
+
+        row = sheet.AddRow()
+        row.AddCell().Value = userNumber
+
+        // 用户信息
+        user := db.QueryRow("select id, username, depart from records where number = ?", userNumber)
+        user.Scan(&id, &username, &depart)
+
+        row.AddCell().Value = username
+
+
+        // 每天的打卡记录
+        for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
+            //row.AddCell().Value = currentDate.Format("2006-1-2")
+            records, err = stmt.Query(currentDate, currentDate.Add(24 * time.Hour), userNumber)
+            if err != nil {
+                panic(err)
+            }
+
+            pickCountInDay = 0
+            for records.Next() {
+                var id int
+                var pickTime string
+                records.Scan(&id, &pickTime)
+                fmt.Println(id, pickTime)
+
+                pickCountInDay = pickCountInDay + 1
+            }
+
+            row.AddCell().Value = strconv.Itoa(pickCountInDay)
+
+            records.Close()
+        }
+
+        // records, err := db.Query("select id, number, username, depart, pick_time from records where number = ?", userNumber)
+        // if err != nil {
+        //     panic(err)
+        // }
+        //
+        // for records.Next() {
+        //     var id int
+        //     var number, username, depart, pickTimeStr string
+        //     var pickTime time.Time
+        //
+        //     records.Scan(&id, &number, &username, &depart, &pickTimeStr)
+        //     pickTime = parseDate(pickTimeStr)
+        //
+        //     fmt.Println(id, number, username, depart, pickTime.Format("2006-1-2 15:04"))
+        //
+        //
+        //
+        // }
+    }
+
+
+
+    err = destExcelFile.Save(*destFile)
+	if err != nil {
+        panic(err)
+	}
+
+}
+
+// 数据库中的日期字符串转为time.Time类型
+func parseDate(date string) time.Time {
+    dateTime, err := time.Parse("2006-1-2 15:04:05+00:00", date)
+    if err != nil {
+        panic(err)
+    }
+
+    return dateTime
+}
+
+// 判断整数是否在数组里
+func inArray(needle uint, haystack []uint) bool {
+	for _, item := range haystack {
+		if item == needle {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Excel文件导入到sqlite数据库
+func excelToDatabase(sourceFileName string, db *sql.DB) {
+	xlFile, err := xlsx.OpenFile(sourceFileName)
+	if err != nil {
+		log.Fatalf("文件打开失败: %s", err)
+		os.Exit(2)
+	}
+
+	stmt, err := db.Prepare("INSERT INTO records (depart, number, username, pick_time) values(?, ?, ?, ?)")
+	if err != nil {
+		log.Fatalf("准备插入语句出错: %s", err)
+		os.Exit(2)
+	}
+	defer stmt.Close()
+
 	for _, sheet := range xlFile.Sheets {
 		for index, row := range sheet.Rows {
 			if index == 0 {
@@ -61,153 +209,16 @@ func main() {
 			signTime, err := time.Parse("2006/1/2 15:04:05", strings.Split(timeDate, " ")[0]+" "+timeTime+":00")
 			if err != nil {
 				log.Fatal(err)
+				os.Exit(2)
 			}
 
-			if _, ok := users[username]; !ok {
-				users[username] = kqUser{depart, number, username, []time.Time{}, map[string][]uint{}}
+			_, err = stmt.Exec(depart, number, username, signTime)
+			if err != nil {
+				log.Fatalf("添加打卡记录失败： %s", err)
+				os.Exit(2)
 			}
-			user, _ := users[username]
-			user.KqTimes = append(user.KqTimes, signTime)
-			users[username] = user
 		}
 	}
-
-	log.Printf("本次考勤用户共 %d 人", len(users))
-
-	// 遍历用户，计算用户考勤
-	for username, user := range users {
-		log.Printf("用户 %s 本月共 %d 次考勤", username, len(user.KqTimes))
-
-		kqInEveryDays := map[string][]uint{}
-		for _, kqTime := range user.KqTimes {
-			log.Printf("用户 %s 打卡: %s", user.Username, kqTime.Format("2006-01-02 15:04"))
-
-			kqDate, checkType := cardChecked(kqTime)
-
-			if _, ok := kqInEveryDays[kqDate]; !ok {
-				kqInEveryDays[kqDate] = []uint{}
-			}
-
-			kqInEveryDays[kqDate] = append(kqInEveryDays[kqDate], checkType)
-		}
-
-		user.KqInEveryDays = kqInEveryDays
-		users[username] = user
-	}
-
-	// 遍历用户，统计考勤结果
-	destExcelFile := xlsx.NewFile()
-	sheet, err := destExcelFile.AddSheet("Sheet1")
-	if err != nil {
-		log.Fatalf("创建Excel文件失败: %s", err)
-	}
-
-	// 标题
-	row := sheet.AddRow()
-	row.AddCell().Value = "编号"
-	row.AddCell().Value = "姓名"
-
-	for day  := 0; day < 31; day ++ {
-		row.AddCell().Value = strconv.Itoa(day + 1)
-	}
-
-	for username, user := range users {
-		row := sheet.AddRow()
-
-		cell := row.AddCell()
-		cell.Value = user.Number
-
-		cell2 :=row.AddCell()
-		cell2.Value = username
-
-		for day := 0; day < 31; day ++ {
-			row.AddCell()
-		}
-
-		for kqDate, checkTypes := range user.KqInEveryDays {
-			log.Printf("用户 %s 于 %s 考勤 %d 次", username, kqDate, len(checkTypes))
-			kqOk := true
-
-			var kqStatus []string
-
-			// TODO 考勤检查
-			if user.Depart == "客户服务部" {
-
-				if !inArray(checkTypeMorningWork, checkTypes) {
-					kqOk = false
-					log.Printf("用户 %s 于 %s 早上缺勤", username, kqDate)
-					kqStatus = append(kqStatus, "早上缺勤")
-				}
-
-				if !inArray(checkTypeAfternoonOffWork, checkTypes) {
-					kqOk = false
-					log.Printf("用户 %s 于 %s 下午下班缺勤", username, kqDate)
-					kqStatus = append(kqStatus, "下午下班缺勤")
-				}
-
-			} else if user.Depart == "秩序维护部" {
-
-			} else if user.Depart == "综合管理部" {
-
-			} else if user.Depart == "维修部" {
-
-				if !inArray(checkTypeMorningWork, checkTypes) {
-					kqOk = false
-					log.Printf("用户 %s 于 %s 早上缺勤", username, kqDate)
-					kqStatus = append(kqStatus, "早上缺勤")
-				}
-
-				if !inArray(checkTypeMorningOffWork, checkTypes) {
-					kqOk = false
-					log.Printf("用户 %s 于 %s 上午下班未打卡", username, kqDate)
-					kqStatus = append(kqStatus, "上午下班未打卡")
-				}
-
-				if !inArray(checkTypeAfternoonWork, checkTypes) {
-					kqOk = false
-					log.Printf("用户 %s 于 %s 下午上班未打卡", username, kqDate)
-					kqStatus = append(kqStatus, "下午上班未打卡")
-				}
-
-				if !inArray(checkTypeAfternoonOffWork, checkTypes) {
-					kqOk = false
-					log.Printf("用户 %s 于 %s 下午下班未打卡", username, kqDate)
-					kqStatus = append(kqStatus, "下午下班未打卡")
-				}
-
-			} else if user.Depart == "亳州恒大城物业服务中心" {
-
-			} else {
-				log.Printf("用户 %s 所属部门 %s 不再考勤范围内", user.Username, user.Depart)
-				continue
-			}
-
-			currentDate, _ := time.Parse("2006-01-02", kqDate)
-			if kqOk {
-				log.Printf("用户 %s 与 %s 考勤完整", username, kqDate)
-				row.Cells[currentDate.Day() + 1].Value = "正常"
-			} else {
-				row.Cells[currentDate.Day() + 1].Value = strings.Join(kqStatus, ",")
-			}
-
-		}
-	}
-
-	err = destExcelFile.Save(*destFile)
-	if err != nil {
-		log.Fatalf("保存Excel失败: %s", err)
-	}
-
-}
-
-func inArray(needle uint, haystack []uint) bool {
-	for _, item := range haystack {
-		if item == needle {
-			return true
-		}
-	}
-
-	return false
 }
 
 // 检查用户打卡时间是否为合法的考勤
@@ -269,9 +280,57 @@ func transformKqForHuman(checkType uint) string {
 	return kqExpress
 }
 
+// 获取当前工作目录
 func getCurrentDir() string {
 	file, _ := exec.LookPath(os.Args[0])
 	path := filepath.Dir(file)
 
 	return path
+}
+
+// 初始化records表
+func initRecordTable(db *sql.DB) {
+	tableCreateSql := `
+    DROP TABLE IF EXISTS records;
+    CREATE TABLE records (
+        id INTEGER PRIMARY KEY,
+        depart TEXT,
+        number TEXT,
+        username TEXT,
+        pick_time TEXT,
+        pick_type TEXT
+    )
+    `
+	_, err := db.Exec(tableCreateSql)
+	if err != nil {
+		log.Fatalf("创建表失败: %s", err)
+		os.Exit(2)
+	}
+}
+
+// 获取日期起止边界
+func getDateBorder(db *sql.DB) (minDate, maxDate time.Time) {
+	rows, err := db.Query("select min(pick_time), max(pick_time)  from records")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	rows.Next()
+    var min, max string
+	err = rows.Scan(&min, &max)
+	if err != nil {
+		panic(err)
+	}
+
+    minDate, err = time.Parse("2006-1-2", strings.Split(min, " ")[0])
+    if err != nil {
+        panic(err)
+    }
+
+    maxDate, err = time.Parse("2006-1-2", strings.Split(max, " ")[0])
+    if err != nil {
+        panic(err)
+    }
+
+	return
 }
