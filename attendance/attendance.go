@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/tealeg/xlsx"
 	"log"
@@ -12,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-    "fmt"
 )
 
 // 重构思路
@@ -23,26 +23,10 @@ import (
 var sourceFile = flag.String("source", getCurrentDir()+"/kaoqin.xlsx", "考勤记录文件")
 var destFile = flag.String("dest", time.Now().Format("2006-01-02-15-04-05.xlsx"), "目标文件")
 
-type kqUser struct {
-	Depart        string
-	Number        string
-	Username      string
-	KqTimes       []time.Time
-	KqInEveryDays map[string][]uint
-}
-
-const (
-	checkTypeNone = iota
-	checkTypeMorningWork
-	checkTypeMorningOffWork
-	checkTypeAfternoonWork
-	checkTypeAfternoonOffWork
-)
-
 func main() {
 	flag.Parse()
 
-    fmt.Println("Start")
+	fmt.Println("Start")
 
 	db, err := sql.Open("sqlite3", "./sqlite")
 	if err != nil {
@@ -59,7 +43,7 @@ func main() {
 	// 获取Excel中日期的边界
 	minDate, maxDate := getDateBorder(db)
 
-    destExcelFile := xlsx.NewFile()
+	destExcelFile := xlsx.NewFile()
 	sheet, err := destExcelFile.AddSheet("Sheet1")
 	if err != nil {
 		panic(err)
@@ -69,114 +53,195 @@ func main() {
 	row := sheet.AddRow()
 	row.AddCell().Value = "编号"
 	row.AddCell().Value = "姓名"
+	row.AddCell().Value = "部门"
 
-    for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
-        row.AddCell().Value = currentDate.Format("1月2日")
-    }
+	for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
+		row.AddCell().Value = currentDate.Format("1月2日") + "(" + parseWeek(currentDate.Weekday()) + ")"
+	}
 
-    // 查询用户编号列表
-    numbers, err := db.Query("select distinct number from records")
-    if err != nil {
-        panic(err)
-    }
-    defer numbers.Close()
-
-    stmt, err := db.Prepare("select id, pick_time from records where pick_time > ? and pick_time < ? and number = ?")
-    if err != nil {
-        panic(err)
-    }
-    defer stmt.Close()
-
-    // 遍历用户编号，处理每个用户的打卡记录
-    var pickCountInDay int
-    var records *sql.Rows
-    for numbers.Next() {
-        var userNumber string
-        var id int
-        var username, depart string
-        numbers.Scan(&userNumber)
-
-        row = sheet.AddRow()
-        row.AddCell().Value = userNumber
-
-        // 用户信息
-        user := db.QueryRow("select id, username, depart from records where number = ?", userNumber)
-        user.Scan(&id, &username, &depart)
-
-        row.AddCell().Value = username
-
-
-        // 每天的打卡记录
-        for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
-            //row.AddCell().Value = currentDate.Format("2006-1-2")
-            records, err = stmt.Query(currentDate, currentDate.Add(24 * time.Hour), userNumber)
-            if err != nil {
-                panic(err)
-            }
-
-            pickCountInDay = 0
-            for records.Next() {
-                var id int
-                var pickTime string
-                records.Scan(&id, &pickTime)
-                fmt.Println(id, pickTime)
-
-                pickCountInDay = pickCountInDay + 1
-            }
-
-            row.AddCell().Value = strconv.Itoa(pickCountInDay)
-
-            records.Close()
-        }
-
-        // records, err := db.Query("select id, number, username, depart, pick_time from records where number = ?", userNumber)
-        // if err != nil {
-        //     panic(err)
-        // }
-        //
-        // for records.Next() {
-        //     var id int
-        //     var number, username, depart, pickTimeStr string
-        //     var pickTime time.Time
-        //
-        //     records.Scan(&id, &number, &username, &depart, &pickTimeStr)
-        //     pickTime = parseDate(pickTimeStr)
-        //
-        //     fmt.Println(id, number, username, depart, pickTime.Format("2006-1-2 15:04"))
-        //
-        //
-        //
-        // }
-    }
-
-
-
-    err = destExcelFile.Save(*destFile)
+	// 查询用户编号列表
+	numbers, err := db.Query("select distinct number from records")
 	if err != nil {
-        panic(err)
+		panic(err)
+	}
+	defer numbers.Close()
+
+	stmt, err := db.Prepare("select id, pick_time from records where pick_time > ? and pick_time < ? and number = ?")
+	if err != nil {
+		panic(err)
+	}
+	defer stmt.Close()
+
+	// 遍历用户编号，处理每个用户的打卡记录
+	for numbers.Next() {
+		var userNumber string
+		var id int
+		var username, depart string
+		numbers.Scan(&userNumber)
+
+		// 用户信息
+		user := db.QueryRow("select id, username, depart from records where number = ?", userNumber)
+		user.Scan(&id, &username, &depart)
+
+		row = sheet.AddRow()
+		row.AddCell().Value = userNumber
+		row.AddCell().Value = username
+		row.AddCell().Value = depart
+
+		// 每天的打卡记录
+		for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
+			// 查询当前的打卡记录
+			row.AddCell().Value = strings.Join(getSignResult(stmt, userNumber, depart, currentDate), "\n")
+		}
+	}
+
+	// for id, checkType := range dataToUpdate {
+	//     _, err = db.Exec("update records set pick_type = ? where id = ?", transformKqForHuman(checkType), id)
+	//     if err != nil {
+	//         panic(err)
+	//     }
+	// }
+
+	err = destExcelFile.Save(*destFile)
+	if err != nil {
+		panic(err)
 	}
 
 }
 
-// 数据库中的日期字符串转为time.Time类型
-func parseDate(date string) time.Time {
-    dateTime, err := time.Parse("2006-1-2 15:04:05+00:00", date)
-    if err != nil {
-        panic(err)
-    }
+// 转换每周第几天为字符串展示
+func parseWeek(dayInWeek time.Weekday) string {
+	var weekStr string
+	switch dayInWeek {
+	case time.Sunday:
+		weekStr = "周日"
+	case time.Monday:
+		weekStr = "周一"
+	case time.Tuesday:
+		weekStr = "周二"
+	case time.Wednesday:
+		weekStr = "周三"
+	case time.Thursday:
+		weekStr = "周四"
+	case time.Friday:
+		weekStr = "周五"
+	case time.Saturday:
+		weekStr = "周六"
+	}
 
-    return dateTime
+	return weekStr
 }
 
-// 判断整数是否在数组里
-func inArray(needle uint, haystack []uint) bool {
-	for _, item := range haystack {
-		if item == needle {
+// 获取签到结果
+func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate time.Time) []string {
+	results := []string{}
+
+	pickTimesInDay := getPickTimesInDayForUser(stmt, userNumber, currentDate)
+
+	if len(pickTimesInDay) == 0 {
+		return []string{"×"}
+	}
+
+	if depart == "客户服务部" || depart == "综合管理部" {
+
+		// 早8:30-18:30
+		if isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) || isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
+			if !isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) {
+				results = append(results, "早上缺")
+			}
+
+			if !isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
+				results = append(results, "下午下缺")
+			}
+
+		} else if isSignedInTime("9:00", "10:00", pickTimesInDay, currentDate) || isSignedInTime("18:00", "19:00", pickTimesInDay, currentDate) {
+
+			if !isSignedInTime("9:00", "10:00", pickTimesInDay, currentDate) {
+				results = append(results, "早上缺")
+			}
+
+			if !isSignedInTime("18:00", "19:00", pickTimesInDay, currentDate) {
+				results = append(results, "下午下缺")
+			}
+
+		} else if isSignedInTime("10:00", "11:00", pickTimesInDay, currentDate) || isSignedInTime("19:00", "20:00", pickTimesInDay, currentDate) {
+
+			if !isSignedInTime("10:00", "11:00", pickTimesInDay, currentDate) {
+				results = append(results, "早上缺")
+			}
+
+			if !isSignedInTime("19:00", "20:00", pickTimesInDay, currentDate) {
+				results = append(results, "下午下缺")
+			}
+
+		} else {
+			results = append(results, "上下班无，其余有")
+		}
+
+	} else if depart == "维保修大队" {
+
+		if !isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) {
+			results = append(results, "早上缺")
+		}
+
+		if !isSignedInTime("12:00", "12:30", pickTimesInDay, currentDate) {
+			results = append(results, "上午下缺")
+		}
+
+		if !isSignedInTime("13:30", "14:00", pickTimesInDay, currentDate) {
+			results = append(results, "下午上缺")
+		}
+
+		if !isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
+			results = append(results, "下午下缺")
+		}
+
+	} else {
+
+		if !isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) {
+			results = append(results, "早上缺")
+		}
+
+		if !isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
+			results = append(results, "下午下缺")
+		}
+	}
+
+	if len(results) == 0 {
+		results = append(results, "√")
+	}
+
+	// 标记0-5点的打卡
+	if isSignedInTime("00:00", "05:00", pickTimesInDay, currentDate) {
+		results = append(results, "☻")
+	}
+
+    results = append(results, "(" + strconv.Itoa(len(pickTimesInDay)) + ")")
+
+	return results
+}
+
+// 是否是含有指定签到时间
+func isSignedInTime(checkTimeStartStr, checkTimeEndStr string, signTimesInDay []time.Time, currentDate time.Time) bool {
+	checkTimeStart := parseDate(currentDate.Format("2006-1-2 ") + checkTimeStartStr + ":00+00:00")
+	checkTimeEnd := parseDate(currentDate.Format("2006-1-2 ") + checkTimeEndStr + ":00+00:00")
+	for _, signTime := range signTimesInDay {
+		if signTime.Before(checkTimeEnd) && signTime.After(checkTimeStart) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// 数据库中的日期字符串转为time.Time类型
+func parseDate(date string) time.Time {
+	dateTime, err := time.Parse("2006-1-2 15:04:05+00:00", date)
+	if err != nil {
+		panic(err)
+	}
+
+	return dateTime
 }
 
 // Excel文件导入到sqlite数据库
@@ -221,65 +286,6 @@ func excelToDatabase(sourceFileName string, db *sql.DB) {
 	}
 }
 
-// 检查用户打卡时间是否为合法的考勤
-func cardChecked(kqTime time.Time) (kqDate string, checkType uint) {
-
-	kqDate = kqTime.Format("2006-01-02")
-
-	// 早上上班打卡，打卡时间 7:30-8:30
-	kqTime1, _ := time.Parse("2006-01-02 15:04", kqDate+" 7:30")
-	kqTime1End, _ := time.Parse("2006-01-02 15:04", kqDate+" 8:30")
-
-	// 中午下班打卡，打卡时间 12:00-12:30
-	kqTime2, _ := time.Parse("2006-01-02 15:04", kqDate+" 12:00")
-	kqTime2End, _ := time.Parse("2006-01-02 15:04", kqDate+" 12:30")
-
-	// 下午上班打卡，打卡时间 13:30-14:00
-	kqTime3, _ := time.Parse("2006-01-02 15:04", kqDate+" 13:30")
-	kqTime3End, _ := time.Parse("2006-01-02 15:04", kqDate+" 14:00")
-
-	// 下午下班打卡，打卡时间 17:30-18:30
-	kqTime4, _ := time.Parse("2006-01-02 15:04", kqDate+" 17:30")
-	kqTime4End, _ := time.Parse("2006-01-02 15:04", kqDate+" 18:30")
-
-	switch {
-	case kqTime.After(kqTime1) && kqTime.Before(kqTime1End):
-		checkType = checkTypeMorningWork
-	case kqTime.After(kqTime2) && kqTime.Before(kqTime2End):
-		checkType = checkTypeMorningOffWork
-	case kqTime.After(kqTime3) && kqTime.Before(kqTime3End):
-		checkType = checkTypeAfternoonWork
-	case kqTime.After(kqTime4) && kqTime.Before(kqTime4End):
-		checkType = checkTypeAfternoonOffWork
-	default:
-		checkType = checkTypeNone
-	}
-
-	return
-}
-
-// 转换考勤标识符为可读的考勤时间
-func transformKqForHuman(checkType uint) string {
-	var kqExpress string
-
-	switch checkType {
-	case checkTypeNone:
-		kqExpress = "无效打卡"
-	case checkTypeMorningWork:
-		kqExpress = "上午上班打卡"
-	case checkTypeMorningOffWork:
-		kqExpress = "上午下班打卡"
-	case checkTypeAfternoonWork:
-		kqExpress = "下午上班打卡"
-	case checkTypeAfternoonOffWork:
-		kqExpress = "下午下班打卡"
-	default:
-		kqExpress = "无效打卡"
-	}
-
-	return kqExpress
-}
-
 // 获取当前工作目录
 func getCurrentDir() string {
 	file, _ := exec.LookPath(os.Args[0])
@@ -316,21 +322,42 @@ func getDateBorder(db *sql.DB) (minDate, maxDate time.Time) {
 	}
 	defer rows.Close()
 	rows.Next()
-    var min, max string
+	var min, max string
 	err = rows.Scan(&min, &max)
 	if err != nil {
 		panic(err)
 	}
 
-    minDate, err = time.Parse("2006-1-2", strings.Split(min, " ")[0])
-    if err != nil {
-        panic(err)
-    }
+	minDate, err = time.Parse("2006-1-2", strings.Split(min, " ")[0])
+	if err != nil {
+		panic(err)
+	}
 
-    maxDate, err = time.Parse("2006-1-2", strings.Split(max, " ")[0])
-    if err != nil {
-        panic(err)
-    }
+	maxDate, err = time.Parse("2006-1-2", strings.Split(max, " ")[0])
+	if err != nil {
+		panic(err)
+	}
 
 	return
+}
+
+// 获取某用户某一天的所有考勤时间
+func getPickTimesInDayForUser(stmt *sql.Stmt, userNumber string, currentDate time.Time) []time.Time {
+	records, err := stmt.Query(currentDate, currentDate.Add(24*time.Hour), userNumber)
+	if err != nil {
+		panic(err)
+	}
+	defer records.Close()
+
+	pickTimesInDay := []time.Time{}
+
+	for records.Next() {
+		var id int
+		var pickTime string
+		records.Scan(&id, &pickTime)
+
+		pickTimesInDay = append(pickTimesInDay, parseDate(pickTime))
+	}
+
+	return pickTimesInDay
 }
