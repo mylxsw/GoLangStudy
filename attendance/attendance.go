@@ -3,14 +3,12 @@ package main
 import (
     "database/sql"
     "flag"
-    "fmt"
     _ "github.com/mattn/go-sqlite3"
     "github.com/tealeg/xlsx"
     "log"
     "os"
     "os/exec"
     "path/filepath"
-    //"strconv"
     "strings"
     "time"
 )
@@ -25,8 +23,6 @@ var destFile = flag.String("dest", time.Now().Format("2006-01-02-15-04-05.xlsx")
 
 func main() {
     flag.Parse()
-
-    fmt.Println("Start")
 
     db, err := sql.Open("sqlite3", "./sqlite")
     if err != nil {
@@ -49,6 +45,16 @@ func main() {
         panic(err)
     }
 
+    // 创建单元格样式
+    dangerStyle := xlsx.NewStyle()
+    dangerStyle.Fill = *xlsx.NewFill("solid", "00FF0000", "FF000000")
+
+    warningStyle := xlsx.NewStyle()
+    warningStyle.Fill = *xlsx.NewFill("solid", "00FFB61E", "FF000000")
+
+    infoStyle := xlsx.NewStyle()
+    infoStyle.Fill = *xlsx.NewFill("solid", "0044CEF6", "FF000000")
+
     // 标题
     row := sheet.AddRow()
     row.AddCell().Value = "部门"
@@ -56,7 +62,13 @@ func main() {
     row.AddCell().Value = "姓名"
 
     for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
-        row.AddCell().Value = currentDate.Format("1月2日") + "(" + parseWeek(currentDate.Weekday()) + ")"
+        cell := row.AddCell()
+        weekStr := parseWeek(currentDate.Weekday())
+        cell.Value = currentDate.Format("1月2日") + "(" + weekStr + ")"
+
+        if weekStr == "周六" || weekStr == "周日" {
+            cell.SetStyle(infoStyle)
+        }
     }
 
     // 查询用户编号列表
@@ -91,8 +103,17 @@ func main() {
         // 每天的打卡记录
         for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
             // 查询当前的打卡记录
-            row.AddCell().Value = strings.Join(getSignResult(stmt, userNumber, depart, currentDate), "\n")
+            signResult := strings.Join(getSignResult(stmt, userNumber, depart, currentDate), "\n")
+            cell := row.AddCell()
+            cell.Value = signResult
+            if signResult == "O" {
+                cell.SetStyle(dangerStyle)
+            } else if !(signResult == "C" || signResult == "W" || signResult == "√") {
+                cell.SetStyle(warningStyle)
+            }
+            log.Printf("用户 %s - %s [%s] %s 打卡记录: %s", depart, username, userNumber, currentDate.Format("2006-1-2"), signResult)
         }
+
     }
 
     // for id, checkType := range dataToUpdate {
@@ -144,66 +165,50 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
 
     if depart == "客户服务部" || depart == "综合管理部" {
 
-        // 早8:30-18:30
-        if isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) || isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
-            if !isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) {
-                results = append(results, "缺上")
-            }
+        // 需要同时满足在11点前有打卡记录,同时,在17:30之后有打卡记录,同时上班总时间超过9小时
+        // 如果缺勤,时间可能不准确,比如上午缺勤,无法根据下午下班时间判断是上的什么班
+        if !isSignedBefore("11:00", pickTimesInDay, currentDate) {
+            results = append(results, "缺上")
+        }
 
-            if !isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
-                results = append(results, "缺下")
-            }
+        if calTimeDiffInHours(pickTimesInDay) < 9 || !isSignedAfter("17:30", pickTimesInDay, currentDate) {
+            results = append(results, "缺下")
+        }
 
-        } else if isSignedInTime("9:00", "10:00", pickTimesInDay, currentDate) || isSignedInTime("18:00", "19:00", pickTimesInDay, currentDate) {
-
-            if !isSignedInTime("9:00", "10:00", pickTimesInDay, currentDate) {
-                results = append(results, "缺上")
-            }
-
-            if !isSignedInTime("18:00", "19:00", pickTimesInDay, currentDate) {
-                results = append(results, "缺下")
-            }
-
-        } else if isSignedInTime("10:00", "11:00", pickTimesInDay, currentDate) || isSignedInTime("19:00", "20:00", pickTimesInDay, currentDate) {
-
-            if !isSignedInTime("10:00", "11:00", pickTimesInDay, currentDate) {
-                results = append(results, "缺上")
-            }
-
-            if !isSignedInTime("19:00", "20:00", pickTimesInDay, currentDate) {
-                results = append(results, "缺下")
-            }
-
-        } else {
-            results = append(results, "上下班无，其余有")
+        if isSignedContainRange("11:00", "20:00", pickTimesInDay, currentDate) {
+            results = append(results, "W")
+        } else if isSignedContainRange("10:00", "19:00", pickTimesInDay, currentDate) {
+            results = append(results, "C")
         }
 
     } else if depart == "维保修大队" {
 
-        if !isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) {
-            results = append(results, "早上缺")
+        if !isSignedBefore("8:30", pickTimesInDay, currentDate) {
+            results = append(results, "缺上")
         }
 
         if !isSignedInTime("12:00", "12:30", pickTimesInDay, currentDate) {
-            results = append(results, "上午下缺")
+            results = append(results, "缺上下")
         }
 
         if !isSignedInTime("13:30", "14:00", pickTimesInDay, currentDate) {
-            results = append(results, "下午上缺")
+            results = append(results, "缺下上")
         }
 
-        if !isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
-            results = append(results, "下午下缺")
+        if !isSignedAfter("18:30", pickTimesInDay, currentDate){
+            results = append(results, "缺下")
         }
+
+    } else if depart == "维修部" {
 
     } else {
 
         if !isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) {
-            results = append(results, "早上缺")
+            results = append(results, "缺上")
         }
 
         if !isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
-            results = append(results, "下午下缺")
+            results = append(results, "缺下")
         }
     }
 
@@ -234,6 +239,74 @@ func isSignedInTime(checkTimeStartStr, checkTimeEndStr string, signTimesInDay []
     return false
 }
 
+// 检查在指定时间之前是否有打卡记录
+func isSignedBefore(checkTimeStr string, signTimesInDay []time.Time, currentDate time.Time) bool {
+    checkTime := parseDate(currentDate.Format("2006-1-2 ") + checkTimeStr + ":00+00:00")
+    for _, signTime := range signTimesInDay {
+        if signTime.Before(checkTime) {
+            return true
+        }
+    }
+
+    return false
+}
+
+// 检查在指定时间之后是否有打卡记录
+func isSignedAfter(checkTimeStr string, signTimesInDay []time.Time, currentDate time.Time) bool {
+    checkTime := parseDate(currentDate.Format("2006-1-2 ") + checkTimeStr + ":00+00:00")
+    for _, signTime := range signTimesInDay {
+        if signTime.After(checkTime) {
+            return true
+        }
+    }
+
+    return false
+}
+
+// 判断打卡时间是否包含指定的时间范围
+func isSignedContainRange(startTimeStr, endTimeStr string, signTimesInDay []time.Time, currentDate time.Time) bool {
+    return isSignedBefore(startTimeStr, signTimesInDay, currentDate) && isSignedAfter(endTimeStr, signTimesInDay, currentDate)
+}
+
+// 计算一天中最早打卡和最晚打卡的时间差
+func calTimeDiffInHours(signTimesInDay[] time.Time) float64 {
+
+    if len(signTimesInDay) == 0 {
+        return 0
+    }
+
+    signTimeFirst := getFirstSignTime(signTimesInDay)
+    signTimeLast := getLastSignTime(signTimesInDay)
+
+    timeDiff := signTimeLast.Sub(signTimeFirst)
+
+    return timeDiff.Hours()
+}
+
+// 获取一天中最早的打卡时间
+func getFirstSignTime(signTimesInDay[] time.Time) time.Time {
+    signTimeFirst := signTimesInDay[0]
+    for _, signTime := range signTimesInDay[1:] {
+        if signTimeFirst.After(signTime) {
+            signTimeFirst = signTime
+        }
+    }
+
+    return signTimeFirst
+}
+
+// 获取一天中最晚的打卡时间
+func getLastSignTime(signTimesInDay[] time.Time) time.Time {
+    signTimeLast := signTimesInDay[0]
+    for _, signTime := range signTimesInDay[1:] {
+        if signTimeLast.Before(signTime) {
+            signTimeLast = signTime
+        }
+    }
+
+    return signTimeLast
+}
+
 // 数据库中的日期字符串转为time.Time类型
 func parseDate(date string) time.Time {
     dateTime, err := time.Parse("2006-1-2 15:04:05+00:00", date)
@@ -251,6 +324,8 @@ func excelToDatabase(sourceFileName string, db *sql.DB) {
         log.Fatalf("文件打开失败: %s", err)
         os.Exit(2)
     }
+
+    log.Printf("打卡数据导入临时数据库...")
 
     stmt, err := db.Prepare("INSERT INTO records (depart, number, username, pick_time) values(?, ?, ?, ?)")
     if err != nil {
@@ -276,6 +351,8 @@ func excelToDatabase(sourceFileName string, db *sql.DB) {
                 log.Fatal(err)
                 os.Exit(2)
             }
+
+            log.Printf("导入用户 %s - %s [%s] at %s", depart, username, number, signTime.Format("2006-1-2 15:04:05"))
 
             _, err = stmt.Exec(depart, number, username, signTime)
             if err != nil {
@@ -307,6 +384,8 @@ func initRecordTable(db *sql.DB) {
         pick_type TEXT
     )
     `
+    log.Printf("初始化临时数据库: %s", tableCreateSql)
+
     _, err := db.Exec(tableCreateSql)
     if err != nil {
         log.Fatalf("创建表失败: %s", err)
