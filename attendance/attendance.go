@@ -61,7 +61,7 @@ func main() {
     row.AddCell().Value = "编号"
     row.AddCell().Value = "姓名"
 
-    for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
+    for currentDate := minDate; currentDate.Before(maxDate.Add(24 * time.Hour - 1 * time.Nanosecond)); currentDate = currentDate.Add(24 * time.Hour) {
         cell := row.AddCell()
         weekStr := parseWeek(currentDate.Weekday())
         cell.Value = currentDate.Format("1月2日") + "(" + weekStr + ")"
@@ -101,9 +101,9 @@ func main() {
         row.AddCell().Value = username
 
         // 每天的打卡记录
-        for currentDate := minDate; currentDate.Before(maxDate); currentDate = currentDate.Add(24 * time.Hour) {
+        for currentDate := minDate; currentDate.Before(maxDate.Add(24 * time.Hour - 1 * time.Nanosecond)); currentDate = currentDate.Add(24 * time.Hour) {
             // 查询当前的打卡记录
-            signResult := strings.Join(getSignResult(stmt, userNumber, depart, currentDate), "\n")
+            signResult := strings.Join(getSignResult(stmt, userNumber, depart, currentDate), " ")
             cell := row.AddCell()
             cell.Value = signResult
             if signResult == "O" {
@@ -167,12 +167,20 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
 
         // 需要同时满足在11点前有打卡记录,同时,在17:30之后有打卡记录,同时上班总时间超过9小时
         // 如果缺勤,时间可能不准确,比如上午缺勤,无法根据下午下班时间判断是上的什么班
-        if !isSignedBefore("11:00", pickTimesInDay, currentDate) {
+        morningOk := isSignedBefore("11:00", pickTimesInDay, currentDate)
+        afternoonOk := isSignedAfter("17:30", pickTimesInDay, currentDate)
+        isEnough := calTimeDiffInHours(pickTimesInDay) >= 9
+
+        if !morningOk {
             results = append(results, "缺上")
         }
 
-        if calTimeDiffInHours(pickTimesInDay) < 9 || !isSignedAfter("17:30", pickTimesInDay, currentDate) {
+        if !afternoonOk {
             results = append(results, "缺下")
+        }
+
+        if morningOk && !isEnough && afternoonOk {
+            results = append(results, "早退")
         }
 
         if isSignedContainRange("11:00", "20:00", pickTimesInDay, currentDate) {
@@ -187,11 +195,11 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
             results = append(results, "缺上")
         }
 
-        if !isSignedInTime("12:00", "12:30", pickTimesInDay, currentDate) {
+        if !isSignedInTime("12:00", "12:59", pickTimesInDay, currentDate) {
             results = append(results, "缺上下")
         }
 
-        if !isSignedInTime("13:30", "14:00", pickTimesInDay, currentDate) {
+        if !isSignedInTime("13:00", "14:00", pickTimesInDay, currentDate) {
             results = append(results, "缺下上")
         }
 
@@ -200,15 +208,35 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
         }
 
     } else if depart == "维修部" {
+        pickTimesInNextDay := getPickTimesInDayForUser(stmt, userNumber, currentDate.Add(24 * time.Hour))
+        if isSignedInTime("12:00", "17:30", pickTimesInDay, currentDate) {
+            // 晚班
+            if !isSignedInTime("8:30", "10:30", pickTimesInNextDay, currentDate.Add(24 * time.Hour)) {
+                results = append(results, "异常")
+            }
+        } else if isSignedBefore("8:30", pickTimesInDay, currentDate) {
+            // 白班
+            if !isSignedAfter("17:30", pickTimesInDay, currentDate) {
+                results = append(results, "异常")
+            }
+        } else {
+            results = append(results, "异常")
+        }
 
     } else {
+        morningOk := isSignedBefore("8:30", pickTimesInDay, currentDate)
+        afternoonOk := isSignedAfter("17:30", pickTimesInDay, currentDate)
 
-        if !isSignedInTime("7:30", "8:30", pickTimesInDay, currentDate) {
+        if !morningOk && afternoonOk {
             results = append(results, "缺上")
         }
 
-        if !isSignedInTime("17:30", "18:30", pickTimesInDay, currentDate) {
+        if !afternoonOk && morningOk {
             results = append(results, "缺下")
+        }
+
+        if !morningOk && !afternoonOk {
+            results = append(results, "早退")
         }
     }
 
@@ -217,9 +245,9 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
     }
 
     // 标记0-5点的打卡
-    if isSignedInTime("00:00", "05:00", pickTimesInDay, currentDate) {
-        results = append(results, "☻")
-    }
+    //if isSignedInTime("00:00", "05:00", pickTimesInDay, currentDate) {
+    //    results = append(results, "☻")
+    //}
 
     //results = append(results, "(" + strconv.Itoa(len(pickTimesInDay)) + ")")
 
