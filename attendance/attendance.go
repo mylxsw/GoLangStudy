@@ -108,7 +108,13 @@ func main() {
             cell.Value = signResult
             if signResult == "O" {
                 cell.SetStyle(dangerStyle)
-            } else if !(signResult == "C" || signResult == "W" || signResult == "√") {
+            } else if !(signResult == "C" ||
+                signResult == "W" ||
+                signResult == "√" ||
+                signResult == "A" ||
+                signResult == "B" ||
+                signResult == "A/B" ||
+                signResult == "B/A") {
                 cell.SetStyle(warningStyle)
             }
             log.Printf("用户 %s - %s [%s] %s 打卡记录: %s", depart, username, userNumber, currentDate.Format("2006-1-2"), signResult)
@@ -203,24 +209,60 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
             results = append(results, "缺下上")
         }
 
-        if !isSignedAfter("18:30", pickTimesInDay, currentDate){
+        if !isSignedAfter("18:30", pickTimesInDay, currentDate) {
             results = append(results, "缺下")
         }
 
     } else if depart == "维修部" {
         pickTimesInNextDay := getPickTimesInDayForUser(stmt, userNumber, currentDate.Add(24 * time.Hour))
-        if isSignedInTime("12:00", "17:30", pickTimesInDay, currentDate) {
-            // 晚班
-            if !isSignedInTime("8:30", "10:30", pickTimesInNextDay, currentDate.Add(24 * time.Hour)) {
-                results = append(results, "异常")
-            }
-        } else if isSignedBefore("8:30", pickTimesInDay, currentDate) {
+        if isSignedBefore("8:30", pickTimesInDay, currentDate) {
             // 白班
             if !isSignedAfter("17:30", pickTimesInDay, currentDate) {
                 results = append(results, "异常")
             }
+        } else if isSignedInTime("12:00", "17:30", pickTimesInDay, currentDate) {
+            // 晚班
+            if !isSignedInTime("8:30", "10:30", pickTimesInNextDay, currentDate.Add(24 * time.Hour)) {
+                results = append(results, "异常")
+            }
         } else {
             results = append(results, "异常")
+        }
+
+    } else if depart == "秩序维护部" {
+        pickTimesInNextDay := getPickTimesInDayForUser(stmt, userNumber, currentDate.Add(24 * time.Hour))
+        dateAtNextDay := currentDate.Add(24 * time.Hour)
+        if isSignedInTime("6:00", "7:00", pickTimesInDay, currentDate) {
+            if isSignedInTime("19:00", "23:00", pickTimesInDay, currentDate) {
+                if isSignedInTime("0:00", "01:00", pickTimesInNextDay, dateAtNextDay) {
+                    if isSignedInTime("07:00", "08:00", pickTimesInNextDay, dateAtNextDay) {
+                        results = append(results, "A/B")
+                    } else {
+                        results = append(results, "A")
+                    }
+                } else {
+                    results = append(results, "A")
+                }
+            } else {
+                results = append(results, "缺下")
+            }
+        } else if isSignedInTime("15:00", "19:00", pickTimesInDay, currentDate) {
+            if isSignedInTime("01:00", "03:00", pickTimesInNextDay, dateAtNextDay) {
+                results = append(results, "B/A")
+            } else if isSignedInTime("7:00", "12:00", pickTimesInNextDay, dateAtNextDay) {
+                results = append(results, "B")
+            } else {
+                results = append(results, "缺下")
+            }
+
+        } else if isSignedInTime("17:00", "23:00", pickTimesInDay, currentDate) {
+            results = append(results, "缺上")
+        } else {
+            if isSignedInTime("7:00", "12:00", pickTimesInNextDay, dateAtNextDay) {
+                results = append(results, "缺上")
+            } else {
+                results = append(results, "O")
+            }
         }
 
     } else {
@@ -259,7 +301,8 @@ func isSignedInTime(checkTimeStartStr, checkTimeEndStr string, signTimesInDay []
     checkTimeStart := parseDate(currentDate.Format("2006-1-2 ") + checkTimeStartStr + ":00+00:00")
     checkTimeEnd := parseDate(currentDate.Format("2006-1-2 ") + checkTimeEndStr + ":00+00:00")
     for _, signTime := range signTimesInDay {
-        if signTime.Before(checkTimeEnd) && signTime.After(checkTimeStart) {
+        if (signTime.Before(checkTimeEnd) && signTime.After(checkTimeStart)) ||
+            signTime.Equal(checkTimeEnd) || signTime.Equal(checkTimeStart) {
             return true
         }
     }
@@ -271,7 +314,7 @@ func isSignedInTime(checkTimeStartStr, checkTimeEndStr string, signTimesInDay []
 func isSignedBefore(checkTimeStr string, signTimesInDay []time.Time, currentDate time.Time) bool {
     checkTime := parseDate(currentDate.Format("2006-1-2 ") + checkTimeStr + ":00+00:00")
     for _, signTime := range signTimesInDay {
-        if signTime.Before(checkTime) {
+        if signTime.Before(checkTime) || signTime.Equal(checkTime) {
             return true
         }
     }
@@ -283,7 +326,7 @@ func isSignedBefore(checkTimeStr string, signTimesInDay []time.Time, currentDate
 func isSignedAfter(checkTimeStr string, signTimesInDay []time.Time, currentDate time.Time) bool {
     checkTime := parseDate(currentDate.Format("2006-1-2 ") + checkTimeStr + ":00+00:00")
     for _, signTime := range signTimesInDay {
-        if signTime.After(checkTime) {
+        if signTime.After(checkTime) || signTime.Equal(checkTime) {
             return true
         }
     }
