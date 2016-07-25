@@ -255,13 +255,21 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
                 results = append(results, "缺下")
             }
 
-        } else if isSignedInTime("17:00", "23:00", pickTimesInDay, currentDate) {
+        } else if isSignedInTime("19:00", "23:00", pickTimesInDay, currentDate) {
             results = append(results, "缺上")
         } else {
-            if isSignedInTime("7:00", "12:00", pickTimesInNextDay, dateAtNextDay) {
-                results = append(results, "缺上")
+            if isSignedInTime("0:00", "01:00", pickTimesInNextDay, dateAtNextDay) {
+                if isSignedInTime("7:00", "8:00", pickTimesInNextDay, dateAtNextDay) {
+                    results = append(results, "B/A")
+                } else {
+                    results = append(results, "异常")
+                }
             } else {
-                results = append(results, "O")
+                if isSignedInTime("7:00", "12:00", pickTimesInNextDay, dateAtNextDay) {
+                    results = append(results, "缺上")
+                } else {
+                    results = append(results, "O")
+                }
             }
         }
 
