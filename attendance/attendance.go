@@ -3,14 +3,15 @@ package main
 import (
 	"database/sql"
 	"flag"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/tealeg/xlsx"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/tealeg/xlsx"
 )
 
 // 重构思路
@@ -463,8 +464,14 @@ func excelToDatabase(sourceFileName string, db *sql.DB) {
 
 			signTime, err := time.Parse("2006/1/2 15:04:05", strings.Split(timeDate, " ")[0]+" "+timeTime+":00")
 			if err != nil {
-				log.Fatal(err)
-				os.Exit(2)
+				signTime, err = time.Parse("1-2-06 15:04:05", strings.Split(timeDate, " ")[0]+" "+timeTime+":00")
+				if err != nil {
+					signTime, err = time.Parse("1/2/06 15:04:05", strings.Split(timeDate, " ")[0]+" "+timeTime+":00")
+					if err != nil {
+						log.Fatal(err)
+						os.Exit(2)
+					}
+				}
 			}
 
 			log.Printf("导入用户 %s - %s [%s] at %s", depart, username, number, signTime.Format("2006-1-2 15:04:05"))

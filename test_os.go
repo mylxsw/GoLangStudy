@@ -7,4 +7,8 @@ import (
 
 func main() {
 	fmt.Println(os.Getwd())
+
+    if _, err := os.Stat("./test_array.go"); err != nil {
+        fmt.Println(err)
+    }
 }
