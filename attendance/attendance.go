@@ -462,6 +462,10 @@ func excelToDatabase(sourceFileName string, db *sql.DB) {
 
 			log.Printf("Raw: %s %s %s %s %s", depart, number, username, timeDate, timeTime)
 
+			if strings.Count(timeTime, ":") == 2 {
+				timeTime = timeTime[:len(timeTime)-3]
+			}
+
 			signTime, err := time.Parse("2006/1/2 15:04:05", strings.Split(timeDate, " ")[0]+" "+timeTime+":00")
 			if err != nil {
 				signTime, err = time.Parse("1-2-06 15:04:05", strings.Split(timeDate, " ")[0]+" "+timeTime+":00")
