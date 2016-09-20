@@ -8,6 +8,7 @@ import (
 	"aicode.cc/remote-tail/console"
 	"flag"
 	"strings"
+	"os"
 )
 
 var welcomeMessage string = `
@@ -21,16 +22,36 @@ author: mylxsw
 homepage: github.com/mylxsw/remote-tail
 ` + "\x1b[0;31m-----------------------------------------------\x1b[0m\n"
 
-var filepath *string = flag.String("file", "/var/log/messages", "-file=\"/home/data/logs/**/*.log\"")
-var hostStr *string = flag.String("hosts", "root@127.0.0.1", "-hosts=root@192.168.1.225,root@192.168.1.226")
+var filepath *string = flag.String("file", "", "-file=\"/home/data/logs/**/*.log\"")
+var hostStr *string = flag.String("hosts", "", "-hosts=root@192.168.1.225,root@192.168.1.226")
+
+func usageAndExit() {
+	flag.Usage()
+	fmt.Fprint(os.Stderr, "\n")
+
+	os.Exit(1)
+}
 
 func main() {
+
+	flag.Usage = func () {
+		fmt.Fprint(os.Stderr, welcomeMessage)
+		fmt.Fprint(os.Stderr, "Options:\n\n")
+		flag.PrintDefaults()
+	}
+
 	flag.Parse()
+
+	if *filepath == "" || *hostStr == "" {
+		usageAndExit()
+	}
+
 
 	var hosts []string = strings.Split(*hostStr, ",")
 	var script string = fmt.Sprintf("tail -f %s", *filepath)
 
 	fmt.Println(welcomeMessage)
+	fmt.Println(console.ColorfulText(console.TextMagenta, script) + "\n")
 
 	outputs := make(chan command.Message, 20)
 	var wg sync.WaitGroup
