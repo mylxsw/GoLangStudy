@@ -168,7 +168,7 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
 
 	pickTimesInDay := getPickTimesInDayForUser(stmt, userNumber, currentDate)
 
-	if len(pickTimesInDay) == 0 {
+	if len(pickTimesInDay) == 0 && (depart != "维修部" && depart != "秩序维护部") {
 		return []string{"O"}
 	}
 
@@ -434,7 +434,7 @@ func excelToDatabase(sourceFileName string, db *sql.DB) {
 		os.Exit(2)
 	}
 
-	log.Printf("打卡数据导入临时数据库...")
+	log.Print("打卡数据导入临时数据库...")
 
 	stmt, err := db.Prepare("INSERT INTO records (depart, number, username, pick_time) values(?, ?, ?, ?)")
 	if err != nil {
