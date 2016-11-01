@@ -472,8 +472,11 @@ func excelToDatabase(sourceFileName string, db *sql.DB) {
 				if err != nil {
 					signTime, err = time.Parse("1/2/06 15:04:05", strings.Split(timeDate, " ")[0]+" "+timeTime+":00")
 					if err != nil {
-						log.Fatal(err)
-						os.Exit(2)
+						signTime, err = time.Parse("2006-1-2 15:04:05", strings.Split(timeDate, " ")[0]+" "+timeTime+":00")
+						if err != nil {
+							log.Fatal(err)
+							os.Exit(2)
+						}
 					}
 				}
 			}
