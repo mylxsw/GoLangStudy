@@ -198,7 +198,7 @@ func getSignResult(stmt *sql.Stmt, userNumber string, depart string, currentDate
 		// 	results = append(results, "C")
 		// }
 
-	} else if depart == "维保修部/维保修大队（亳州恒大城）" || depart == "维保修大队" || depart == "维保修大队（亳州恒大城）" {
+	} else if depart == "维保修部/维保修大队（亳州恒大城）" || depart == "维保修大队" || depart == "维保修大队（亳州恒大城）" || depart == "维保修大队（马鞍山恒大御景湾）" {
 
 		if !isSignedBefore("8:30", pickTimesInDay, currentDate) {
 			results = append(results, "缺上")
